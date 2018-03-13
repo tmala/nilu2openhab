@@ -2,7 +2,7 @@
   "name": "milu2openhab",
   "version": "1.0.0",
   "description": "Gets data from api.nilu.no and updates items in openHAB",
-  "main": "listen.ns",
+  "main": "nilu2openhab.ns",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

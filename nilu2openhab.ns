@@ -40,13 +40,28 @@ if (LOGLEVEL_DEBUG) {
 
 const DELAY_BETWEEN_CALLS = 5*1000; // 5 seconds
 
-getUpdate(NILU_API_ROLLAND_NO2, OPENHAB_ITEM_AQ_Rolland_NO2);
-setTimeout(() => { getUpdate(NILU_API_ROLLAND_PM10, OPENHAB_ITEM_AQ_Rolland_PM10); }, 1 * DELAY_BETWEEN_CALLS);
-setTimeout(() => { getUpdate(NILU_API_ROLLAND_PM25, OPENHAB_ITEM_AQ_Rolland_PM25); }, 2 * DELAY_BETWEEN_CALLS);
-setTimeout(() => { getUpdate(NILU_API_DKPLASS_NO2,  OPENHAB_ITEM_AQ_DKPlass_NO2);  }, 3 * DELAY_BETWEEN_CALLS);
-setTimeout(() => { getUpdate(NILU_API_DKPLASS_PM10, OPENHAB_ITEM_AQ_DKPlass_PM10); }, 4 * DELAY_BETWEEN_CALLS);
-setTimeout(() => { getUpdate(NILU_API_DKPLASS_PM25, OPENHAB_ITEM_AQ_DKPlass_PM25); }, 5 * DELAY_BETWEEN_CALLS);
-setTimeout(() => { sendCommand(OPENHAB_ITEM_AQ_UPDATED, ts());                     }, 6 * DELAY_BETWEEN_CALLS);
+runUpdate();
+
+// Run Every Hour after first run
+setInterval(() => {
+    runUpdate();
+}, 60 * 60 * 1000);
+
+function runUpdate() {
+    getUpdate(NILU_API_ROLLAND_NO2, OPENHAB_ITEM_AQ_Rolland_NO2);
+    setTimeout(() => { getUpdate(NILU_API_ROLLAND_PM10, OPENHAB_ITEM_AQ_Rolland_PM10); }, 1 * DELAY_BETWEEN_CALLS);
+    setTimeout(() => { getUpdate(NILU_API_ROLLAND_PM25, OPENHAB_ITEM_AQ_Rolland_PM25); }, 2 * DELAY_BETWEEN_CALLS);
+    setTimeout(() => { getUpdate(NILU_API_DKPLASS_NO2,  OPENHAB_ITEM_AQ_DKPlass_NO2);  }, 3 * DELAY_BETWEEN_CALLS);
+    setTimeout(() => { getUpdate(NILU_API_DKPLASS_PM10, OPENHAB_ITEM_AQ_DKPlass_PM10); }, 4 * DELAY_BETWEEN_CALLS);
+    setTimeout(() => { getUpdate(NILU_API_DKPLASS_PM25, OPENHAB_ITEM_AQ_DKPlass_PM25); }, 5 * DELAY_BETWEEN_CALLS);
+    setTimeout(() => {
+        const myTimestamp = ts();
+        sendCommand(OPENHAB_ITEM_AQ_UPDATED, myTimestamp);
+        if (LOGLEVEL_INFO) {
+            console.log(ts() + ' openHAB item: ' + OPENHAB_ITEM_AQ_UPDATED + ' => ' + myTimestamp);
+        }
+        }, 6 * DELAY_BETWEEN_CALLS);
+}
 
 function getUpdate(fromUrl, openhabItem) {
     (async () => {
