@@ -4,14 +4,10 @@ Updates items at openHAB
 */
 importScripts = require('./importscripts.js').importScripts;
 importScripts('./settings.ns');
+importScripts('./myLog.ns');
+importScripts('./myTime.ns');
 let XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
 let got = require('got');
-
-const LOGLEVEL_FATAL = true;
-const LOGLEVEL_ERROR = true;
-const LOGLEVEL_INFO = true;
-const LOGLEVEL_DEBUG = false;
-const LOGLEVEL_TRACE = false;
 
 const NILU_API_URL = 'http://api.nilu.no/aq/utd?';
 const NILU_API_AREAS = 'areas=Bergen';
@@ -34,15 +30,15 @@ const OPENHAB_ITEM_AQ_DKPlass_NO2 = 'AirQualityDKPlass_NO2';
 const OPENHAB_ITEM_AQ_DKPlass_PM25 = 'AirQualityDKPlass_PM25';
 const OPENHAB_ITEM_AQ_DKPlass_PM10 = 'AirQualityDKPlass_PM10';
 
-if (LOGLEVEL_DEBUG) {
-    console.log(ts() + " Gets data from api.nilu.no");
+if (isDebug()) {
+    console.log(myTime_ts() + " Gets data from api.nilu.no");
 }
 
 const DELAY_BETWEEN_CALLS = 5*1000; // 5 seconds
 
 // Run Every Hour after first run if parameter 'forever' is present
 let runForEver = false;
-process.argv.forEach(function (val, index, array) {
+process.argv.forEach(function (val) {
     if ('forever' === val) {
         runForEver = true;
     }
@@ -59,16 +55,16 @@ setTimeout(() => {
 
 function runUpdate() {
     getUpdate(NILU_API_ROLLAND_NO2, OPENHAB_ITEM_AQ_Rolland_NO2);
-    setTimeout(() => { getUpdate(NILU_API_ROLLAND_PM10, OPENHAB_ITEM_AQ_Rolland_PM10); }, 1 * DELAY_BETWEEN_CALLS);
+    setTimeout(() => { getUpdate(NILU_API_ROLLAND_PM10, OPENHAB_ITEM_AQ_Rolland_PM10); }, DELAY_BETWEEN_CALLS);
     setTimeout(() => { getUpdate(NILU_API_ROLLAND_PM25, OPENHAB_ITEM_AQ_Rolland_PM25); }, 2 * DELAY_BETWEEN_CALLS);
     setTimeout(() => { getUpdate(NILU_API_DKPLASS_NO2,  OPENHAB_ITEM_AQ_DKPlass_NO2);  }, 3 * DELAY_BETWEEN_CALLS);
     setTimeout(() => { getUpdate(NILU_API_DKPLASS_PM10, OPENHAB_ITEM_AQ_DKPlass_PM10); }, 4 * DELAY_BETWEEN_CALLS);
     setTimeout(() => { getUpdate(NILU_API_DKPLASS_PM25, OPENHAB_ITEM_AQ_DKPlass_PM25); }, 5 * DELAY_BETWEEN_CALLS);
     setTimeout(() => {
-        const myTimestamp = ts();
+        const myTimestamp = myTime_ts();
         sendCommand(OPENHAB_ITEM_AQ_UPDATED, myTimestamp);
-        if (LOGLEVEL_INFO) {
-            console.log(ts() + ' openHAB item: ' + OPENHAB_ITEM_AQ_UPDATED + ' => ' + myTimestamp);
+        if (isInfo()) {
+            console.log(myTime_ts() + ' openHAB item: ' + OPENHAB_ITEM_AQ_UPDATED + ' => ' + myTimestamp);
         }
         }, 6 * DELAY_BETWEEN_CALLS);
 }
@@ -76,27 +72,27 @@ function runUpdate() {
 function getUpdate(fromUrl, openhabItem) {
     (async () => {
         try {
-            if (LOGLEVEL_TRACE) {
+            if (isTrace()) {
                 console.log('Retrieving data from URL: ' + fromUrl);
             }
             const response = await got(fromUrl);
             if (response.body) {
                 let jsonData = JSON.parse(response.body.replace('[','').replace(']',''));
-                if (LOGLEVEL_TRACE) {
+                if (isTrace()) {
                     console.log(JSON.stringify(jsonData, null, '  '));
                 }
                 let myCmd = jsonData.value.toFixed(2) + ' ' + jsonData.unit;
-                if (LOGLEVEL_INFO) {
-                    console.log( ts() + ' openHAB item: ' + openhabItem + ' => ' + myCmd );
+                if (isInfo()) {
+                    console.log( myTime_ts() + ' openHAB item: ' + openhabItem + ' => ' + myCmd );
                 }
                 sendCommand(openhabItem, myCmd);
             } else {
-                if (LOGLEVEL_ERROR) {
+                if (isError()) {
                     console.log('No response.body returned...');
                 }
             }
         } catch (error) {
-            if (LOGLEVEL_ERROR) {
+            if (isError()) {
                 console.log(error.response);
             }
         }
@@ -117,13 +113,13 @@ function sendCommand(itemId, command) {
         if (this.readyState === this.DONE) {
             if (this.status === 200) {
                 let res = this.responseText;
-                if (LOGLEVEL_TRACE) {
-                    console.log(ts() + " " + this.status +  " OK => Response: ", res);
+                if (isTrace()) {
+                    console.log(myTime_ts() + " " + this.status +  " OK => Response: ", res);
                 }
             } else {
                 let res = this.responseText;
-                if (LOGLEVEL_ERROR) {
-                    console.log(ts() + " " + this.status +  " " + this.statusText + " => Response: ", JSON.stringify(res, null, 2) );
+                if (isError()) {
+                    console.log(myTime_ts() + " " + this.status +  " " + this.statusText + " => Response: ", JSON.stringify(res, null, 2) );
                 }
             }
         }
@@ -131,33 +127,5 @@ function sendCommand(itemId, command) {
     xhr_sendCommand.open('POST', OPENHAB_URL + itemId);
     xhr_sendCommand.setRequestHeader("accept", "application/json");
     xhr_sendCommand.send(command);
-}
-
-/***********************************************************
- * Some DATETIME-related functions
- ***********************************************************
- */
-function ts() {
-    let d = new Date();
-    return date2str_NO(d);
-}
-function date2str_NO(d) {
-    return fix2digit(d.getDate()) + '.' + fixMonth(d.getMonth()) + '.' + d.getFullYear() + ' ' +
-        fix2digit(d.getHours()) + ':' + fix2digit(d.getMinutes()) + ':' + fix2digit(d.getSeconds());
-}
-function fixMonth(num) {
-    let month = num + 1;
-    if (month < 10) {
-        return '0' + month;
-    } else {
-        return '' + month;
-    }
-}
-function fix2digit(num) {
-    if (num < 10) {
-        return '0' + num;
-    } else {
-        return '' + num;
-    }
 }
 
